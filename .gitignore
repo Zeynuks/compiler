@@ -238,3 +238,8 @@ _Pvt_Extensions
 # FAKE - F# Make
 .fake/
 samples/01-basics/string-joiner/out.txt
+
+# Продукты сборки и отчёты о покрытии
+build/
+coverage/
+CMakeUserPresets.json
