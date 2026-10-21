@@ -261,6 +261,14 @@ TEST_CASE("Lexer разбирает литералы целых чисел", "[L
 				"IntLiteral(5)",
 				"IntLiteral(2)",
 			},
+		},
+		TestCase{
+			"0XFF 0B101 0Xab",
+			{
+				"IntLiteral(255)",
+				"IntLiteral(5)",
+				"IntLiteral(171)",
+			},
 		}));
 }
 
@@ -293,12 +301,12 @@ TEST_CASE("Lexer не допускает некорректные литерал
 			},
 		},
 		TestCase{
-			"12abc 0b102 0xFG 0XFF 7_x",
+			"12abc 0b102 0xFG 0B12 7_x",
 			{
 				"Error(12abc)",
 				"Error(0b102)",
 				"Error(0xFG)",
-				"Error(0XFF)",
+				"Error(0B12)",
 				"Error(7_x)",
 			},
 		}));
@@ -308,12 +316,11 @@ TEST_CASE("Lexer разбирает литералы вещественных ч
 {
 	CheckTokenize(GENERATE(
 		TestCase{
-			"1.5 0.25 3.0 1_000.000_5",
+			"1.5 0.25 3.0",
 			{
 				"DoubleLiteral(1.5)",
 				"DoubleLiteral(0.25)",
 				"DoubleLiteral(3)",
-				"DoubleLiteral(1000.0005)",
 			},
 		},
 		TestCase{
@@ -348,12 +355,31 @@ TEST_CASE("Lexer не допускает некорректные литерал
 			},
 		},
 		TestCase{
-			"1e400 1.0e-400",
+			"1e400 1.0e999",
 			{
 				"Error(1e400)",
-				"Error(1.0e-400)",
+				"Error(1.0e999)",
+			},
+		},
+		TestCase{
+			"1_000.5 1.0_5 1_0e5 1e1_0",
+			{
+				"Error(1_000.5)",
+				"Error(1.0_5)",
+				"Error(1_0e5)",
+				"Error(1e1_0)",
 			},
 		}));
+}
+
+TEST_CASE("Lexer считает округление вещественного литерала к нулю допустимым", "[Lexer]")
+{
+	CheckTokenize("1e-400 1.0e-400 0.0e-9999",
+		{
+			"DoubleLiteral(0)",
+			"DoubleLiteral(0)",
+			"DoubleLiteral(0)",
+		});
 }
 
 TEST_CASE("Lexer разбирает операторы", "[Lexer]")
@@ -659,6 +685,42 @@ TEST_CASE("Lexer не считает перевод строки после за
 		}));
 }
 
+TEST_CASE("Lexer не считает перевод строки после } тела do разделителем", "[Lexer]")
+{
+	CheckTokenize(GENERATE(
+		TestCase{
+			"do {\na\n}\nwhile (b)",
+			{ "Do", "LeftBrace", "Identifier(a)", "Newline", "RightBrace", "While", "LeftParen", "Identifier(b)", "RightParen" },
+		},
+		TestCase{
+			"{\na\n}\nb",
+			{ "LeftBrace", "Identifier(a)", "Newline", "RightBrace", "Newline", "Identifier(b)" },
+		},
+		TestCase{
+			"do {\n{ a }\n}\nb",
+			{ "Do", "LeftBrace", "LeftBrace", "Identifier(a)", "RightBrace", "Newline", "RightBrace", "Identifier(b)" },
+		}));
+}
+
+TEST_CASE("Lexer не снимает лишнюю скобку при закрытии заголовка внутри круглых скобок", "[Lexer]")
+{
+	CheckTokenize("f(if (a)\nb\nelse c\n)\nd",
+		{
+			"Identifier(f)",
+			"LeftParen",
+			"If",
+			"LeftParen",
+			"Identifier(a)",
+			"RightParen",
+			"Identifier(b)",
+			"Else",
+			"Identifier(c)",
+			"RightParen",
+			"Newline",
+			"Identifier(d)",
+		});
+}
+
 TEST_CASE("Lexer не считает перевод строки перед продолжением выражения разделителем", "[Lexer]")
 {
 	CheckTokenize(GENERATE(
@@ -843,6 +905,10 @@ TEST_CASE("Lexer не допускает некорректные литерал
 		TestCase{
 			"'\xFF' '\xD0'",
 			{ "Error('\xFF')", "Error('\xD0')" },
+		},
+		TestCase{
+			"'\xC0\x80' '\xED\xA0\x80' '\xF4\x90\x80\x80'",
+			{ "Error('\xC0\x80')", "Error('\xED\xA0\x80')", "Error('\xF4\x90\x80\x80')" },
 		}));
 }
 
@@ -976,23 +1042,25 @@ TEST_CASE("Lexer разбирает подстановки выражений в
 		},
 		TestCase{
 			R"("${a)",
-			{ "StringBegin", "TemplateBegin", "Identifier(a)" },
+			{ "StringBegin", "TemplateBegin", "Identifier(a)", "Error()" },
 		}));
 }
 
-TEST_CASE("Lexer не считает перевод строки внутри подстановки разделителем", "[Lexer]")
+TEST_CASE("Lexer не допускает перевод строки внутри подстановки", "[Lexer]")
 {
-	CheckTokenize("\"${\na\nb\n}\"\nc",
-		{
-			"StringBegin",
-			"TemplateBegin",
-			"Identifier(a)",
-			"Identifier(b)",
-			"TemplateEnd",
-			"StringEnd",
-			"Newline",
-			"Identifier(c)",
-		});
+	CheckTokenize(GENERATE(
+		TestCase{
+			"\"${\na\nb\n}\"\nc",
+			{ "StringBegin", "TemplateBegin", "Error()", "Identifier(a)", "Newline", "Identifier(b)", "Newline", "RightBrace", "StringBegin", "Error()", "Newline", "Identifier(c)" },
+		},
+		TestCase{
+			"\"${a /* \n */ b}\"",
+			{ "StringBegin", "TemplateBegin", "Identifier(a)", "Error()", "Identifier(b)", "RightBrace", "StringBegin", "Error()" },
+		},
+		TestCase{
+			"\"${f(\"x\n y",
+			{ "StringBegin", "TemplateBegin", "Identifier(f)", "LeftParen", "StringBegin", "StringText(x)", "Error()", "Newline", "Identifier(y)" },
+		}));
 }
 
 TEST_CASE("Lexer определяет позиции токенов", "[Lexer]")

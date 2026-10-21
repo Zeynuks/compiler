@@ -30,6 +30,7 @@ private:
 		HeaderParentheses,
 		Brackets,
 		Braces,
+		DoBraces,
 		String,
 		Template,
 	};
@@ -56,8 +57,10 @@ private:
 	Token ParseDoubleLiteral(std::string_view text);
 	bool ReadFraction(std::string& text);
 	bool ReadExponent(std::string& text);
-	void ReadDigits(std::string& digits, bool (*isDigit)(char));
+	void ReadDigits(std::string& digits, bool (*isDigit)(char), bool allowUnderscores = true);
 	Token ParseStringBegin();
+	Token MakeUnterminatedStringError();
+	void AbandonStrings();
 	Token ParseStringPart();
 	Token ParseStringText();
 	Token ParseTemplateIdentifier();
@@ -80,7 +83,7 @@ private:
 	std::vector<Context> m_contexts;
 
 	TokenType m_previousType = TokenType::Newline;
-	bool m_previousClosesHeader = false;
+	bool m_previousSuppressesNewline = false;
 };
 
 } // namespace lex

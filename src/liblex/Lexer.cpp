@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -139,6 +141,7 @@ constexpr std::array SIMPLE_ESCAPES{
 };
 
 constexpr char32_t MAX_CODE_POINT = 0x10FFFF;
+constexpr std::array MIN_CODE_POINT{ char32_t{ 0 }, char32_t{ 0x80 }, char32_t{ 0x800 }, char32_t{ 0x10000 } };
 
 constexpr char32_t MIN_SURROGATE = 0xD800;
 constexpr char32_t MAX_SURROGATE = 0xDFFF;
@@ -265,10 +268,19 @@ Token Lexer::ParseToken()
 	{
 		return MakeErrorToken();
 	}
+
+	if (newlineLocation && std::ranges::contains(m_contexts, Context::Template))
+	{
+		AbandonStrings();
+		m_previousType = TokenType::Error;
+		m_previousSuppressesNewline = false;
+		return Token{ .type = TokenType::Error, .value = std::string{}, .location = *newlineLocation };
+	}
+
 	if (newlineLocation && IsNewlineSignificant())
 	{
 		m_previousType = TokenType::Newline;
-		m_previousClosesHeader = false;
+		m_previousSuppressesNewline = false;
 		return Token{ .type = TokenType::Newline, .value = {}, .location = *newlineLocation };
 	}
 
@@ -285,6 +297,11 @@ Token Lexer::ParseNextToken()
 
 	if (m_scanner.IsEnd())
 	{
+		if (std::ranges::contains(m_contexts, Context::String))
+		{
+			return MakeUnterminatedStringError();
+		}
+
 		return MakeToken(TokenType::EndOfFile);
 	}
 
@@ -326,7 +343,7 @@ void Lexer::UpdateContexts(const Token& token)
 		return isMatched;
 	};
 
-	m_previousClosesHeader = false;
+	m_previousSuppressesNewline = false;
 	switch (token.type)
 	{
 	case TokenType::LeftParen:
@@ -336,17 +353,24 @@ void Lexer::UpdateContexts(const Token& token)
 		m_contexts.push_back(Context::Brackets);
 		break;
 	case TokenType::LeftBrace:
-		m_contexts.push_back(Context::Braces);
+		m_contexts.push_back(m_previousType == TokenType::Do ? Context::DoBraces : Context::Braces);
 		break;
 	case TokenType::RightParen:
-		m_previousClosesHeader = closeContext(Context::HeaderParentheses);
-		closeContext(Context::Parentheses);
+		m_previousSuppressesNewline = closeContext(Context::HeaderParentheses);
+		if (!m_previousSuppressesNewline)
+		{
+			closeContext(Context::Parentheses);
+		}
 		break;
 	case TokenType::RightBracket:
 		closeContext(Context::Brackets);
 		break;
 	case TokenType::RightBrace:
-		closeContext(Context::Braces);
+		m_previousSuppressesNewline = closeContext(Context::DoBraces);
+		if (!m_previousSuppressesNewline)
+		{
+			closeContext(Context::Braces);
+		}
 		break;
 	default:
 		break;
@@ -433,12 +457,12 @@ void Lexer::RememberNewline(std::optional<SourceLocation>& newlineLocation) cons
 
 bool Lexer::IsNewlineSignificant() const
 {
-	if (!m_contexts.empty() && m_contexts.back() != Context::Braces)
+	if (!m_contexts.empty() && m_contexts.back() != Context::Braces && m_contexts.back() != Context::DoBraces)
 	{
 		return false;
 	}
 
-	if (m_previousClosesHeader || ContinuesOnNextLine(m_previousType))
+	if (m_previousSuppressesNewline || ContinuesOnNextLine(m_previousType))
 	{
 		return false;
 	}
@@ -480,9 +504,9 @@ Token Lexer::ParseIdentifierOrKeyword()
 Token Lexer::ParseNumberLiteral()
 {
 	std::string digits;
-	if (m_scanner.Peek() == '0' && (m_scanner.Peek(1) == 'x' || m_scanner.Peek(1) == 'b'))
+	if (const char prefix = m_scanner.Peek(1); m_scanner.Peek() == '0' && (prefix == 'x' || prefix == 'X' || prefix == 'b' || prefix == 'B'))
 	{
-		const bool isHex = m_scanner.Peek(1) == 'x';
+		const bool isHex = prefix == 'x' || prefix == 'X';
 		AdvanceBy(2);
 		ReadDigits(digits, isHex ? IsHexDigit : IsBinaryDigit);
 		return ParseIntLiteral(digits, isHex ? 16 : 2);
@@ -491,10 +515,11 @@ Token Lexer::ParseNumberLiteral()
 	ReadDigits(digits, IsDecimalDigit);
 
 	const bool hasLeadingZero = digits.size() > 1 && digits.front() == '0';
+	const bool hasUnderscore = m_scanner.GetCaptured().contains('_');
 
 	const bool hasFraction = ReadFraction(digits);
 	const bool hasExponent = ReadExponent(digits);
-	if (hasLeadingZero)
+	if (hasLeadingZero || (hasUnderscore && (hasFraction || hasExponent)))
 	{
 		return SkipInvalidLiteralTail();
 	}
@@ -529,8 +554,16 @@ Token Lexer::ParseDoubleLiteral(std::string_view text)
 	}
 
 	double value = 0;
-	const auto result = std::from_chars(std::to_address(text.begin()), std::to_address(text.end()), value);
-	if (result.ec != std::errc{})
+	const auto [ptr, ec] = std::from_chars(std::to_address(text.begin()), std::to_address(text.end()), value);
+	if (ec == std::errc::result_out_of_range)
+	{
+		value = std::strtod(std::string(text).c_str(), nullptr);
+		if (std::isinf(value))
+		{
+			return MakeErrorToken();
+		}
+	}
+	else if (ec != std::errc{})
 	{
 		return MakeErrorToken();
 	}
@@ -546,7 +579,7 @@ bool Lexer::ReadFraction(std::string& text)
 
 	text.push_back('.');
 	m_scanner.Advance();
-	ReadDigits(text, IsDecimalDigit);
+	ReadDigits(text, IsDecimalDigit, false);
 	return true;
 }
 
@@ -572,11 +605,11 @@ bool Lexer::ReadExponent(std::string& text)
 		text.push_back(signChar);
 		m_scanner.Advance();
 	}
-	ReadDigits(text, IsDecimalDigit);
+	ReadDigits(text, IsDecimalDigit, false);
 	return true;
 }
 
-void Lexer::ReadDigits(std::string& digits, bool (*isDigit)(char))
+void Lexer::ReadDigits(std::string& digits, bool (*isDigit)(char), bool allowUnderscores)
 {
 	while (true)
 	{
@@ -588,7 +621,7 @@ void Lexer::ReadDigits(std::string& digits, bool (*isDigit)(char))
 			continue;
 		}
 
-		if (ch == '_' && !digits.empty())
+		if (allowUnderscores && ch == '_' && !digits.empty())
 		{
 			size_t offset = 1;
 			while (m_scanner.Peek(offset) == '_')
@@ -612,6 +645,18 @@ Token Lexer::ParseStringBegin()
 	return MakeToken(TokenType::StringBegin);
 }
 
+void Lexer::AbandonStrings()
+{
+	const auto firstString = std::ranges::find(m_contexts, Context::String);
+	m_contexts.erase(firstString, m_contexts.end());
+}
+
+Token Lexer::MakeUnterminatedStringError()
+{
+	AbandonStrings();
+	return MakeErrorToken();
+}
+
 Token Lexer::ParseStringPart()
 {
 	m_scanner.StartCapture();
@@ -619,8 +664,7 @@ Token Lexer::ParseStringPart()
 
 	if (m_scanner.IsEnd() || IsNewline(m_scanner.Peek()))
 	{
-		m_contexts.pop_back();
-		return MakeErrorToken();
+		return MakeUnterminatedStringError();
 	}
 
 	if (m_scanner.Peek() == '"')
@@ -827,6 +871,12 @@ std::optional<char32_t> Lexer::ReadUtf8Char()
 		}
 		codePoint = (codePoint << 6U) | (static_cast<unsigned char>(ch) & 0x3FU);
 		m_scanner.Advance();
+	}
+
+	if (codePoint < MIN_CODE_POINT.at(continuationCount) || codePoint > MAX_CODE_POINT
+		|| (codePoint >= MIN_SURROGATE && codePoint <= MAX_SURROGATE))
+	{
+		return std::nullopt;
 	}
 	return codePoint;
 }
