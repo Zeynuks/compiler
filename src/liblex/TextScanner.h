@@ -18,7 +18,7 @@ class TextScanner
 public:
 	explicit TextScanner(std::string source);
 
-	// Отдает байт на расстоянии offset от ткурсора либо '\0' за концом текста
+	// Отдает байт на расстоянии offset от курсора либо '\0' за концом текста
 	[[nodiscard]] char Peek(size_t offset = 0) const;
 
 	[[nodiscard]] bool IsEnd() const;
