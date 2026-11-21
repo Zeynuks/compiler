@@ -33,6 +33,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Подключаем каталоги модулей этого проекта.
 add_subdirectory(src/liblex)
+add_subdirectory(src/libvm)
 
 # Подключаем каталоги тестов этого проекта.
 add_subdirectory(tests/liblex_tests)
