@@ -189,3 +189,127 @@
 - Блочные комментарии: от `/*` до `*/`, могут быть многострочными и вложенными; незакрытый - ошибка
 - Комментарий с переводом строки считается одним переводом строки
 - Внутри литералов `//` и `/*` не начинают комментарий
+
+## Синтаксис
+
+Синтаксис описан ниже в нотации EBNF (диалект ISO/IEC 14977:1996).
+Допускаются только программы, которые сводятся к нетерминалу `program`.
+
+```ebnf
+program = [ separator ] [ top_level_declaration { separator top_level_declaration } [ separator ] ] end_of_file ;
+
+separator = ( ";" | newline ) { ";" | newline } ;
+
+top_level_declaration = function_declaration | struct_declaration | property_declaration ;
+
+function_declaration = "fun" identifier "(" [ parameter { "," parameter } ] ")" [ ":" type ] ( block | "=" expression ) ;
+
+parameter = identifier ":" type ;
+
+struct_declaration = "struct" identifier "(" [ field { "," field } ] ")" ;
+
+field = ( "val" | "var" ) identifier ":" type ;
+
+property_declaration = ( "val" | "var" ) identifier ( ":" type [ "=" expression ] | "=" expression ) ;
+
+type = "Int" | "Double" | "Boolean" | "Char" | "String" | "Unit"
+    | "Array" "<" type ">"
+    | identifier ;
+
+block = "{" statements "}" ;
+
+statements = [ separator ] [ statement { separator statement } [ separator ] ] ;
+
+statement = property_declaration | control_structure_body ;
+
+control_structure_body = assignment | increment_statement | loop_statement | block | expression ;
+
+lvalue = identifier
+    | primary_expression { member_access | indexing_suffix | call_suffix } ( member_access | indexing_suffix ) ;
+
+assignment = lvalue ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) expression ;
+
+increment_statement = lvalue ( "++" | "--" ) ;
+
+loop_statement = while_statement | do_while_statement | for_statement ;
+
+while_statement = "while" "(" expression ")" control_structure_body ;
+
+do_while_statement = "do" block "while" "(" expression ")" ;
+
+for_statement = "for" "(" identifier "in" expression ")" control_structure_body ;
+
+expression = disjunction ;
+
+disjunction = conjunction { "||" conjunction } ;
+
+conjunction = equality { "&&" equality } ;
+
+equality = comparison { ( "==" | "!=" | "===" | "!==" ) comparison } ;
+
+comparison = named_check { ( "<" | ">" | "<=" | ">=" ) named_check } ;
+
+named_check = range_expression { ( "in" | "!in" ) range_expression } ;
+
+range_expression = additive_expression [ ( ".." | "..<" ) additive_expression ] ;
+
+additive_expression = multiplicative_expression { ( "+" | "-" ) multiplicative_expression } ;
+
+multiplicative_expression = prefix_unary_expression { ( "*" | "/" | "%" ) prefix_unary_expression } ;
+
+prefix_unary_expression = { "-" | "+" | "!" } postfix_unary_expression ;
+
+postfix_unary_expression = primary_expression { member_access | indexing_suffix | call_suffix } ;
+
+member_access = "." identifier ;
+
+indexing_suffix = "[" expression "]" ;
+
+call_suffix = "(" [ expression { "," expression } ] ")" ;
+
+primary_expression = int_literal
+    | double_literal
+    | char_literal
+    | string_literal
+    | "true"
+    | "false"
+    | identifier
+    | "(" expression ")"
+    | if_expression
+    | jump_expression
+    | array_creation ;
+
+if_expression = "if" "(" expression ")" control_structure_body [ "else" control_structure_body ] ;
+
+jump_expression = "return" [ expression ] | "continue" | "break" ;
+
+array_creation = "Array" "<" type ">" "(" expression "," expression ")" ;
+
+string_literal = string_open { string_text | string_escape | template_variable | template_open expression template_close } string_close ;
+
+newline = ? перевод строки, являющийся разделителем ? ;
+
+end_of_file = ? признак конца файла ? ;
+
+identifier = ? определён в лексике ? ;
+
+int_literal = ? определён в лексике ? ;
+
+double_literal = ? определён в лексике ? ;
+
+char_literal = ? определён в лексике ? ;
+
+string_open = ? определён в лексике ? ;
+
+string_close = ? определён в лексике ? ;
+
+string_text = ? определён в лексике ? ;
+
+string_escape = ? определён в лексике ? ;
+
+template_variable = ? определён в лексике ? ;
+
+template_open = ? определён в лексике ? ;
+
+template_close = ? определён в лексике ? ;
+```
