@@ -247,3 +247,6 @@ CMakeUserPresets.json
 
 # LSP integration specific
 compile_commands.json
+
+# MacOS junk
+.DS_Store
