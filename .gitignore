@@ -177,6 +177,7 @@ BundleArtifacts/
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !*.[Cc]ache/
+.cache
 
 # Others
 ClientBin/
@@ -243,3 +244,9 @@ samples/01-basics/string-joiner/out.txt
 build/
 coverage/
 CMakeUserPresets.json
+
+# LSP integration specific
+compile_commands.json
+
+# MacOS junk
+.DS_Store

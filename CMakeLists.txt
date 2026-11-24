@@ -31,8 +31,14 @@ include(cmake/coverage.cmake)
 # Экспортируем команды для использования с clangd и clang-tidy.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
 # Подключаем каталоги модулей этого проекта.
 add_subdirectory(src/liblex)
+add_subdirectory(src/libvm)
+add_subdirectory(src/libparse)
+add_subdirectory(src/compiler)
 
 # Подключаем каталоги тестов этого проекта.
 add_subdirectory(tests/liblex_tests)
+add_subdirectory(tests/acceptance_tests)

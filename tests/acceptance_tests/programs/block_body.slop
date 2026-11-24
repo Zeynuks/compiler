@@ -1,0 +1,4 @@
+fun main() {
+    println(10)
+    println(20)
+}
