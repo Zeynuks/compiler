@@ -275,7 +275,7 @@ void Parser::Advance()
 	m_token = m_lexer.ParseToken();
 	if (m_token.type == TokenType::Error)
 	{
-		Fail(std::format("Invalid token {:?}", std::get<std::string>(m_token.value)));
+		Fail(std::format("Invalid token {}", std::get<std::string>(m_token.value)));
 	}
 }
 

@@ -39,4 +39,4 @@ add_subdirectory(src/compiler)
 
 # Подключаем каталоги тестов этого проекта.
 add_subdirectory(tests/liblex_tests)
-add_subdirectory(tests/features)
+add_subdirectory(tests/acceptance_tests)
