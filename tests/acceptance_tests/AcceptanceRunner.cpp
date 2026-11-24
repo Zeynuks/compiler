@@ -18,7 +18,7 @@ using Program = std::vector<vm::Instruction>;
 {
 	std::ifstream file(path);
 	REQUIRE(file.is_open());
-	return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	return { std::istreambuf_iterator(file), std::istreambuf_iterator<char>() };
 }
 
 [[nodiscard]] static fs::path ReplaceExtension(fs::path path, const std::string& extension)
