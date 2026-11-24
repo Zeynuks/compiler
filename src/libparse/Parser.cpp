@@ -117,7 +117,6 @@ Parser::ExpressionType Parser::ParseAdditiveExpression()
 }
 
 // Разбирает правило `multiplicative_expression = prefix_unary_expression { ( "*" | "/" | "%" ) prefix_unary_expression } ;`.
-// Для оператора % сообщает об отсутствии соответствующей инструкции виртуальной машины.
 // NOLINTNEXTLINE(misc-no-recursion)
 Parser::ExpressionType Parser::ParseMultiplicativeExpression()
 {
@@ -134,7 +133,8 @@ Parser::ExpressionType Parser::ParseMultiplicativeExpression()
 			instruction = vm::op::Divide{};
 			break;
 		case TokenType::Modulo:
-			Fail("Operator '%' is unavailable in the virtual machine");
+			instruction = vm::op::Remainder{};
+			break;
 		default:
 			return type;
 		}
