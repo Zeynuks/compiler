@@ -13,17 +13,18 @@
 
 ## Инструкции
 
-| Инструкция | Операнд | Эффект для стека            | Описание                                                  |
-| ---------- | ------- | --------------------------- | --------------------------------------------------------- |
-| halt       | —       | —                           | Останавливает выполнение программы                        |
-| push       | N       | ... → ... N                 | Помещает число N на вершину стека                         |
-| add        | —       | ... left right → ... result | Сложение: `result = left + right`                         |
-| subtract   | —       | ... left right → ... result | Вычитание: `result = left - right`                        |
-| multiply   | —       | ... left right → ... result | Умножение: `result = left * right`                        |
-| divide     | —       | ... left right → ... result | Целочисленное деление: `result = left / right`            |
-| negate     | —       | ... value → `... result     | Смена знака: `result = -value`                            |
-| println    | —       | ... value → ...             | Печатает `value` и перенос строки в поток вывода          |
-| read       | —       | ... → ... result            | Читает байт из потока ввода и кладёт в стек его ASCII-код |
+| Инструкция | Операнд | Эффект для стека            | Описание                                                   |
+|------------|---------|-----------------------------|------------------------------------------------------------|
+| halt       | —       | —                           | Останавливает выполнение программы                         |
+| push       | N       | ... → ... N                 | Помещает число N на вершину стека                          |
+| add        | —       | ... left right → ... result | Сложение: `result = left + right`                          |
+| subtract   | —       | ... left right → ... result | Вычитание: `result = left - right`                         |
+| multiply   | —       | ... left right → ... result | Умножение: `result = left * right`                         |
+| divide     | —       | ... left right → ... result | Целочисленное деление: `result = left / right`             |
+| remainder  | —       | ... left right → ... result | Остаток от целочисленного деления: `result = left % right` |
+| negate     | —       | ... value → `... result     | Смена знака: `result = -value`                             |
+| println    | —       | ... value → ...             | Печатает `value` и перенос строки в поток вывода           |
+| read       | —       | ... → ... result            | Читает байт из потока ввода и кладёт в стек его ASCII-код  |
 
 ## Модель выполнения
 

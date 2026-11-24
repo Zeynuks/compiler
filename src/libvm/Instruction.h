@@ -56,6 +56,19 @@ struct DivideStrategy
 	}
 };
 
+struct RemainderStrategy
+{
+	static std::int64_t Apply(const std::int64_t left, const std::int64_t right)
+	{
+		if (right == 0)
+		{
+			throw std::runtime_error("Division by zero");
+		}
+
+		return left % right;
+	}
+};
+
 template <class Strategy>
 struct Binary
 {
@@ -65,6 +78,7 @@ using Add = Binary<AddStrategy>;
 using Subtract = Binary<SubtractStrategy>;
 using Multiply = Binary<MultiplyStrategy>;
 using Divide = Binary<DivideStrategy>;
+using Remainder = Binary<RemainderStrategy>;
 } // namespace op
 
 using Instruction = std::variant<
@@ -74,6 +88,7 @@ using Instruction = std::variant<
 	op::Subtract,
 	op::Multiply,
 	op::Divide,
+	op::Remainder,
 	op::Negate,
 	op::Println,
 	op::Read>;
