@@ -59,7 +59,7 @@ TEST_CASE("Acceptance tests from files", "[acceptance]")
 		{
 			const fs::path& slopFile = entry.path();
 			fs::path const stdoutFile = ReplaceExtension(slopFile, ".stdout");
-			fs::path const errorFile = ReplaceExtension(slopFile, ".error");
+			fs::path const errorFile = ReplaceExtension(slopFile, ".stderr");
 			fs::path const stdinFile = ReplaceExtension(slopFile, ".stdin");
 
 			bool const expectError = fs::exists(errorFile);
@@ -82,7 +82,7 @@ TEST_CASE("Acceptance tests from files", "[acceptance]")
 				{
 					if (!expectError)
 					{
-						FAIL(std::string("Неожиданная ошибка при выполнении: ") + e.what());
+						FAIL(std::string("Программа должна была завершиться успешно но возникла следующая ошибка\n") + e.what());
 					}
 
 					std::string const expectedError = ReadFile(errorFile);
