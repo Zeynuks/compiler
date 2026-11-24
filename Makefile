@@ -1,12 +1,12 @@
 # Юзать `make BUILD_TYPE=Release` для смены типа сборки
 BUILD_TYPE = Debug
 
-all: cmake build test
+all: test
 
 cmake:
 	cmake -S . -B build/$(BUILD_TYPE) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
-build:
+build: cmake
 	cmake --build build/$(BUILD_TYPE) --parallel
 
 test: build
