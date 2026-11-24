@@ -19,5 +19,5 @@ target_link_libraries(acceptance_tests PRIVATE
     libparse
 )
 
-include(Catch)
-catch_discover_tests(acceptance_tests)
+add_test(NAME "Acceptance tests from files" COMMAND acceptance_tests)
+set_tests_properties("Acceptance tests from files" PROPERTIES LABELS acceptance)
